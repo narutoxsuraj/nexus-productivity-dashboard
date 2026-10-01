@@ -1,0 +1,209 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+    min-height: 100vh;
+}
+
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 30px;
+}
+
+/* Header */
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+header h1 {
+    font-size: 32px;
+}
+
+header p {
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+.date {
+    color: #94a3b8;
+    text-align: right;
+}
+
+/* Dashboard Grid */
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+/* Cards */
+
+.card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 18px;
+    padding: 22px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.card h2 {
+    font-size: 20px;
+    margin-bottom: 12px;
+}
+
+.big-number {
+    font-size: 42px;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+/* Progress */
+
+.progress {
+    width: 100%;
+    height: 10px;
+    background: #334155;
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 15px;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 72%;
+    background: #38bdf8;
+    border-radius: 20px;
+}
+
+/* Tasks */
+
+.task {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid #334155;
+}
+
+.task:last-child {
+    border-bottom: none;
+}
+
+.task input {
+    width: 18px;
+    height: 18px;
+}
+
+/* Add Task */
+
+.add-task {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.add-task input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #475569;
+    background: #0f172a;
+    color: white;
+    outline: none;
+}
+
+.add-task input::placeholder {
+    color: #64748b;
+}
+
+/* Buttons */
+
+button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 10px;
+    background: #38bdf8;
+    color: #082f49;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+/* Wide Card */
+
+.wide {
+    grid-column: span 2;
+}
+
+/* Motivation */
+
+.quote {
+    color: #cbd5e1;
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+/* Mobile */
+
+@media (max-width: 800px) {
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .wide {
+        grid-column: span 1;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .date {
+        text-align: left;
+    }
+}
+
+@media (max-width: 500px) {
+
+    .container {
+        padding: 18px;
+    }
+
+    header h1 {
+        font-size: 26px;
+    }
+
+    .card {
+        padding: 18px;
+    }
+
+    .big-number {
+        font-size: 34px;
+    }
+
+    .add-task {
+        flex-direction: column;
+    }
+
+    .add-task button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Nexus Productivity Dashboard</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="container">
+
+    <header>
+        <div>
+            <h1>⚡ Nexus Dashboard</h1>
+            <p>Your personal productivity workspace</p>
+        </div>
+
+        <div class="date" id="date">
+            Loading date...
+        </div>
+    </header>
+
+    <div class="grid">
+
+        <div class="card">
+            <h2>🎯 Productivity</h2>
+            <div class="big-number">72%</div>
+
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+
+            <p style="margin-top:10px;color:#94a3b8;">
+                Keep pushing forward!
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>⏱️ Focus Time</h2>
+            <div class="big-number" id="timer">25:00</div>
+
+            <button onclick="startTimer()">Start Focus</button>
+            <button onclick="resetTimer()">Reset</button>
+        </div>
+
+        <div class="card">
+            <h2>📊 Today's Goal</h2>
+            <div class="big-number">4</div>
+
+            <p style="color:#94a3b8;">
+                Tasks completed today
+            </p>
+        </div>
+
+        <div class="card wide">
+            <h2>✅ Tasks</h2>
+
+            <div id="tasks">
+
+                <div class="task">
+                    <input type="checkbox">
+                    <span>Complete college assignment</span>
+                </div>
+
+                <div class="task">
+                    <input type="checkbox">
+                    <span>Practice JavaScript</span>
+                </div>
+
+                <div class="task">
+                    <input type="checkbox">
+                    <span>Work on Nexus project</span>
+                </div>
+
+            </div>
+
+            <div class="add-task">
+                <input
+                    type="text"
+                    id="taskInput"
+                    placeholder="Add a new task..."
+                >
+
+                <button onclick="addTask()">Add</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>💡 Motivation</h2>
+
+            <p class="quote">
+                "Small progress every day leads to big results."
+            </p>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
