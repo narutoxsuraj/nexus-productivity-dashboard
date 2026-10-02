@@ -312,7 +312,7 @@ function openModal(id) { $(id).classList.remove("hidden"); }
 function closeModal(id) { $(id).classList.add("hidden"); }
 
 function setAiMessage(message) {
-  const el = $("aiMessagePage");
+  const el = $("aiMessage");
   if (el) el.innerHTML = message;
 }
 
@@ -476,7 +476,7 @@ async function aiReply(type) {
 
 
 async function askAi() {
-  const input = $("aiInputPage");
+  const input = $("aiInput");
 
   if (!input) return;
 
@@ -516,7 +516,7 @@ async function aiReply(type) {
 
 
 async function askAi() {
-    const input = $("aiInputPage");
+    const input = $("aiInput");
 
     if (!input) return;
 
@@ -538,23 +538,18 @@ async function askAi() {
 }
 
 function askAi() {
-  const input = $("aiInputPage");
-  if (!input) return;
-
+  const input = $("aiInput");
   const text = input.value.trim();
   if (!text) {
     input.focus();
     return;
   }
-
-  const message = $("aiMessagePage");
-  if (message) message.innerHTML = smartAiReply(text);
-
+  setAiMessage(smartAiReply(text));
   input.value = "";
 }
 
 function addAiSuggestedTask() {
-  const msg = $("aiMessagePage")?.innerText || "";
+  const msg = $("aiMessage").innerText;
   const match = msg.match(/Study (.+?) as a task/i);
   if (match) {
     tasks.push({ text: `Study ${match[1]}`, done: false, created: Date.now() });
@@ -565,33 +560,36 @@ function addAiSuggestedTask() {
   }
 }
 
-if ($("addTaskBtn")) $("addTaskBtn").addEventListener("click", addTask);
-if ($("taskInput")) $("taskInput").addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
-if ($("startFocus")) $("startFocus").addEventListener("click", toggleTimer);
-if ($("resetFocus")) $("resetFocus").addEventListener("click", resetTimer);
+$("aiSend").addEventListener("click", askAi);
+$("aiInput").addEventListener("keydown", e => {
+  if (e.key === "Enter") askAi();
+});
 
-if ($("timerDuration")) {
-  $("timerDuration").value = String(timerDuration);
-  $("timerDuration").addEventListener("change", e => setTimerDuration(e.target.value));
-}
+$("addTaskBtn").addEventListener("click", addTask);
+$("taskInput").addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
+$("startFocus").addEventListener("click", toggleTimer);
+$("resetFocus").addEventListener("click", resetTimer);
 
-if ($("scheduleBtn")) $("scheduleBtn").addEventListener("click", openScheduleEditor);
-if ($("addScheduleItem")) $("addScheduleItem").addEventListener("click", addScheduleItem);
-if ($("saveSchedule")) $("saveSchedule").addEventListener("click", saveScheduleChanges);
+$("timerDuration").value = String(timerDuration);
+$("timerDuration").addEventListener("change", e => setTimerDuration(e.target.value));
 
-if ($("themeBtn")) $("themeBtn").addEventListener("click", () => {
+$("scheduleBtn").addEventListener("click", openScheduleEditor);
+$("addScheduleItem").addEventListener("click", addScheduleItem);
+$("saveSchedule").addEventListener("click", saveScheduleChanges);
+
+$("themeBtn").addEventListener("click", () => {
   const next = document.body.classList.contains("light") ? "dark" : "light";
   applyTheme(next);
   showToast(next === "light" ? "Light mode enabled ☀️" : "Dark mode enabled 🌙");
 });
 
-if ($("notificationBtn")) $("notificationBtn").addEventListener("click", () => openModal("notificationModal"));
-if ($("profileBtn")) $("profileBtn").addEventListener("click", () => {
+$("notificationBtn").addEventListener("click", () => openModal("notificationModal"));
+$("profileBtn").addEventListener("click", () => {
   $("nameInput").value = localStorage.getItem(STORAGE.name) || "Naruto";
   openModal("profileModal");
 });
 
-if ($("saveProfile")) $("saveProfile").addEventListener("click", () => {
+$("saveProfile").addEventListener("click", () => {
   const name = $("nameInput").value.trim() || "Naruto";
   localStorage.setItem(STORAGE.name, name);
   updateDate();
@@ -600,7 +598,7 @@ if ($("saveProfile")) $("saveProfile").addEventListener("click", () => {
   showToast("Profile updated 👤");
 });
 
-if ($("profileImageInput")) $("profileImageInput").addEventListener("change", event => {
+$("profileImageInput").addEventListener("change", event => {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
@@ -618,7 +616,7 @@ if ($("profileImageInput")) $("profileImageInput").addEventListener("change", ev
   reader.readAsDataURL(file);
 });
 
-if ($("removeProfileImage")) $("removeProfileImage").addEventListener("click", () => {
+$("removeProfileImage").addEventListener("click", () => {
   localStorage.removeItem(STORAGE.profileImage);
   $("profileImageInput").value = "";
   updateProfileAvatar();
@@ -637,12 +635,12 @@ document.querySelectorAll("[data-ai]").forEach(btn => {
 });
 
 $("notes").value = localStorage.getItem(STORAGE.notes) || "";
-if ($("notes")) $("notes").addEventListener("input", () => {
+$("notes").addEventListener("input", () => {
   localStorage.setItem(STORAGE.notes, $("notes").value);
   $("noteSaved").textContent = "Saved";
 });
 
-if ($("newQuote")) $("newQuote").addEventListener("click", () => {
+$("newQuote").addEventListener("click", () => {
   const current = $("quote").textContent.replace(/[“”]/g,"");
   let next = current;
   while (next === current) next = quotes[Math.floor(Math.random() * quotes.length)];
@@ -651,7 +649,7 @@ if ($("newQuote")) $("newQuote").addEventListener("click", () => {
 
 $("goalSelect").value = String(goal);
 $("goalText").textContent = goal;
-if ($("goalSelect")) $("goalSelect").addEventListener("change", () => {
+$("goalSelect").addEventListener("change", () => {
   goal = Number($("goalSelect").value);
   localStorage.setItem(STORAGE.goal, String(goal));
   $("goalText").textContent = goal;
@@ -691,20 +689,41 @@ setInterval(updateGreeting, 60000);
 
 
 // Add a small action when the assistant produces a concrete study suggestion.
-if ($("aiMessagePage")) $("aiMessagePage").addEventListener("dblclick", addAiSuggestedTask);
+$("aiMessage").addEventListener("dblclick", addAiSuggestedTask);
 
 /* =========================================================
    NEXUS APP NAVIGATION / MULTI-SECTION UI
 ========================================================= */
+
+function updateNavGlass(page) {
+  const nav = $("bottomNav");
+  const indicator = nav?.querySelector(".nav-glass-indicator");
+  const items = nav ? Array.from(nav.querySelectorAll(".nav-item")) : [];
+  const active = items.find((item) => item.dataset.page === page);
+
+  if (!nav || !indicator || !active) return;
+
+  const navRect = nav.getBoundingClientRect();
+  const itemRect = active.getBoundingClientRect();
+  indicator.style.width = `${itemRect.width}px`;
+  indicator.style.transform = `translateX(${itemRect.left - navRect.left}px)`;
+}
 
 function openPage(page) {
   document.querySelectorAll(".page-section").forEach((section) => {
     section.classList.toggle("active", section.dataset.page === page);
   });
 
+  // Keep the compact 4-button navigation focused on the main destinations.
+  // Related pages such as Schedule, Stats and Settings remain accessible from
+  // the existing dashboard/settings controls without adding more bottom buttons.
+  const navPage = page === "schedule" || page === "stats" || page === "settings" ? "dashboard" : page;
+
   document.querySelectorAll(".nav-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.page === page);
+    item.classList.toggle("active", item.dataset.page === navPage);
   });
+
+  updateNavGlass(navPage);
 
   if (page === "tasks") syncTaskPage();
   if (page === "schedule") syncSchedulePage();
@@ -832,3 +851,8 @@ syncSchedulePage();
 syncStatsPage();
 syncSettingsPage();
 syncDurationButtons();
+updateNavGlass("dashboard");
+window.addEventListener("resize", () => {
+  const active = document.querySelector(".nav-item.active");
+  if (active) updateNavGlass(active.dataset.page);
+});
