@@ -1,5 +1,10 @@
 const $ = (id) => document.getElementById(id);
 
+function safeOn(id, event, handler) {
+  const element = $(id);
+  if (element) element.addEventListener(event, handler);
+}
+
 const STORAGE = {
   tasks: "nexus_tasks_v2",
   notes: "nexus_notes_v2",
@@ -560,37 +565,45 @@ function addAiSuggestedTask() {
   }
 }
 
-$("aiSend").addEventListener("click", askAi);
-$("aiInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") askAi();
+
+
+
+safeOn("addTaskBtn", "click", addTask);
+safeOn("taskInput", "keydown", e => {
+  if (e.key === "Enter") addTask();
 });
+safeOn("startFocus", "click", toggleTimer);
+safeOn("resetFocus", "click", resetTimer);
 
-$("addTaskBtn").addEventListener("click", addTask);
-$("taskInput").addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
-$("startFocus").addEventListener("click", toggleTimer);
-$("resetFocus").addEventListener("click", resetTimer);
+if ($("timerDuration")) {
+  $("timerDuration").value = String(timerDuration);
+  safeOn("timerDuration", "change", e => setTimerDuration(e.target.value));
+}
 
-$("timerDuration").value = String(timerDuration);
-$("timerDuration").addEventListener("change", e => setTimerDuration(e.target.value));
+safeOn("scheduleBtn", "click", openScheduleEditor);
+safeOn("scheduleEditBtn", "click", openScheduleEditor);
+safeOn("addScheduleItem", "click", addScheduleItem);
+safeOn("saveSchedule", "click", saveScheduleChanges);
 
-$("scheduleBtn").addEventListener("click", openScheduleEditor);
-$("addScheduleItem").addEventListener("click", addScheduleItem);
-$("saveSchedule").addEventListener("click", saveScheduleChanges);
-
-$("themeBtn").addEventListener("click", () => {
+safeOn("themeBtn", "click", () => {
   const next = document.body.classList.contains("light") ? "dark" : "light";
   applyTheme(next);
   showToast(next === "light" ? "Light mode enabled ☀️" : "Dark mode enabled 🌙");
 });
 
-$("notificationBtn").addEventListener("click", () => openModal("notificationModal"));
-$("profileBtn").addEventListener("click", () => {
-  $("nameInput").value = localStorage.getItem(STORAGE.name) || "Naruto";
+safeOn("notificationBtn", "click", () => openModal("notificationModal"));
+
+safeOn("profileBtn", "click", () => {
+  const nameInput = $("nameInput");
+  if (nameInput) {
+    nameInput.value = localStorage.getItem(STORAGE.name) || "Naruto";
+  }
   openModal("profileModal");
 });
 
-$("saveProfile").addEventListener("click", () => {
-  const name = $("nameInput").value.trim() || "Naruto";
+safeOn("saveProfile", "click", () => {
+  const input = $("nameInput");
+  const name = input?.value.trim() || "Naruto";
   localStorage.setItem(STORAGE.name, name);
   updateDate();
   updateProfileAvatar();
@@ -598,7 +611,7 @@ $("saveProfile").addEventListener("click", () => {
   showToast("Profile updated 👤");
 });
 
-$("profileImageInput").addEventListener("change", event => {
+safeOn("profileImageInput", "change", event => {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
 
@@ -616,9 +629,10 @@ $("profileImageInput").addEventListener("change", event => {
   reader.readAsDataURL(file);
 });
 
-$("removeProfileImage").addEventListener("click", () => {
+safeOn("removeProfileImage", "click", () => {
   localStorage.removeItem(STORAGE.profileImage);
-  $("profileImageInput").value = "";
+  const imageInput = $("profileImageInput");
+  if (imageInput) imageInput.value = "";
   updateProfileAvatar();
   showToast("Profile picture removed");
 });
@@ -626,35 +640,49 @@ $("removeProfileImage").addEventListener("click", () => {
 document.querySelectorAll("[data-close]").forEach(btn => {
   btn.addEventListener("click", () => closeModal(btn.dataset.close));
 });
+
 document.querySelectorAll(".modal").forEach(modal => {
-  modal.addEventListener("click", e => { if (e.target === modal) closeModal(modal.id); });
+  modal.addEventListener("click", e => {
+    if (e.target === modal) closeModal(modal.id);
+  });
 });
 
 document.querySelectorAll("[data-ai]").forEach(btn => {
   btn.addEventListener("click", () => aiReply(btn.dataset.ai));
 });
 
-$("notes").value = localStorage.getItem(STORAGE.notes) || "";
-$("notes").addEventListener("input", () => {
-  localStorage.setItem(STORAGE.notes, $("notes").value);
-  $("noteSaved").textContent = "Saved";
-});
+const notesEl = $("notes");
+if (notesEl) {
+  notesEl.value = localStorage.getItem(STORAGE.notes) || "";
+  notesEl.addEventListener("input", () => {
+    localStorage.setItem(STORAGE.notes, notesEl.value);
+    if ($("noteSaved")) $("noteSaved").textContent = "Saved";
+  });
+}
 
-$("newQuote").addEventListener("click", () => {
-  const current = $("quote").textContent.replace(/[“”]/g,"");
+safeOn("newQuote", "click", () => {
+  const quoteEl = $("quote");
+  if (!quoteEl) return;
+
+  const current = quoteEl.textContent.replace(/[“”]/g,"");
   let next = current;
-  while (next === current) next = quotes[Math.floor(Math.random() * quotes.length)];
-  $("quote").textContent = `“${next}”`;
+  while (next === current) {
+    next = quotes[Math.floor(Math.random() * quotes.length)];
+  }
+  quoteEl.textContent = `“${next}”`;
 });
 
-$("goalSelect").value = String(goal);
-$("goalText").textContent = goal;
-$("goalSelect").addEventListener("change", () => {
-  goal = Number($("goalSelect").value);
-  localStorage.setItem(STORAGE.goal, String(goal));
-  $("goalText").textContent = goal;
-  updateStats();
-});
+if ($("goalSelect")) {
+  $("goalSelect").value = String(goal);
+  if ($("goalText")) $("goalText").textContent = goal;
+
+  safeOn("goalSelect", "change", () => {
+    goal = Number($("goalSelect").value);
+    localStorage.setItem(STORAGE.goal, String(goal));
+    if ($("goalText")) $("goalText").textContent = goal;
+    updateStats();
+  });
+}
 
 updateStreak();
 applyTheme(localStorage.getItem(STORAGE.theme) || "dark");
@@ -689,7 +717,7 @@ setInterval(updateGreeting, 60000);
 
 
 // Add a small action when the assistant produces a concrete study suggestion.
-$("aiMessage").addEventListener("dblclick", addAiSuggestedTask);
+safeOn("aiMessage", "dblclick", addAiSuggestedTask);
 
 /* =========================================================
    NEXUS APP NAVIGATION / MULTI-SECTION UI
