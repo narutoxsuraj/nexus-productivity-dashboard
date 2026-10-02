@@ -8,7 +8,10 @@ const STORAGE = {
   goal: "nexus_goal_v2",
   focus: "nexus_focus_v2",
   streak: "nexus_streak_v2",
-  lastDay: "nexus_last_day_v2"
+  lastDay: "nexus_last_day_v2",
+  profileImage: "nexus_profile_image_v2",
+  schedule: "nexus_schedule_v2",
+  timerDuration: "nexus_timer_duration_v2"
 };
 
 let tasks = JSON.parse(localStorage.getItem(STORAGE.tasks) || "[]");
@@ -16,7 +19,15 @@ let focusSeconds = Number(localStorage.getItem(STORAGE.focus) || 0);
 let streak = Number(localStorage.getItem(STORAGE.streak) || 0);
 let lastDay = localStorage.getItem(STORAGE.lastDay) || "";
 let goal = Number(localStorage.getItem(STORAGE.goal) || 4);
-let time = 25 * 60;
+let timerDuration = Number(localStorage.getItem(STORAGE.timerDuration) || 25);
+let time = timerDuration * 60;
+
+let scheduleItems = JSON.parse(localStorage.getItem(STORAGE.schedule) || "null") || [
+  { time: "08:00", text: "College / Classes" },
+  { time: "17:00", text: "Project & Coding" },
+  { time: "19:00", text: "Study / Revision" },
+  { time: "22:00", text: "Plan tomorrow" }
+];
 let timerInterval = null;
 
 const quotes = [
@@ -167,10 +178,95 @@ function toggleTimer() {
 function resetTimer() {
   clearInterval(timerInterval);
   timerInterval = null;
-  time = 25 * 60;
+  time = timerDuration * 60;
   updateTimer();
   $("startFocus").textContent = "Start Focus";
   $("timerStatus").textContent = "Ready for a focus session";
+}
+
+
+function updateProfileAvatar() {
+  const avatar = $("profileAvatar");
+  if (!avatar) return;
+
+  const savedImage = localStorage.getItem(STORAGE.profileImage);
+  if (savedImage) {
+    avatar.innerHTML = `<img src="${savedImage}" alt="Profile picture">`;
+    avatar.classList.add("has-image");
+  } else {
+    const name = localStorage.getItem(STORAGE.name) || "Naruto";
+    avatar.textContent = name.charAt(0).toUpperCase();
+    avatar.classList.remove("has-image");
+  }
+}
+
+function renderSchedule() {
+  const list = $("scheduleList");
+  if (!list) return;
+
+  list.innerHTML = scheduleItems.length
+    ? scheduleItems.map(item => `
+        <div class="schedule-item">
+          <span class="time">${escapeHtml(item.time)}</span>
+          <span>${escapeHtml(item.text)}</span>
+        </div>
+      `).join("")
+    : `<div class="schedule-empty">No schedule added yet.</div>`;
+}
+
+function renderScheduleEditor() {
+  const editor = $("scheduleEditor");
+  if (!editor) return;
+
+  editor.innerHTML = scheduleItems.map((item, index) => `
+    <div class="schedule-edit-row">
+      <input class="schedule-time-input" data-index="${index}" type="time" value="${escapeHtml(item.time)}">
+      <input class="schedule-text-input" data-index="${index}" type="text" maxlength="80" value="${escapeHtml(item.text)}" placeholder="Schedule item">
+      <button class="delete-btn schedule-delete" data-index="${index}" title="Delete schedule">×</button>
+    </div>
+  `).join("");
+
+  editor.querySelectorAll(".schedule-delete").forEach(button => {
+    button.addEventListener("click", () => {
+      const index = Number(button.dataset.index);
+      scheduleItems.splice(index, 1);
+      renderScheduleEditor();
+    });
+  });
+}
+
+function openScheduleEditor() {
+  renderScheduleEditor();
+  openModal("scheduleModal");
+}
+
+function saveScheduleChanges() {
+  const rows = document.querySelectorAll(".schedule-edit-row");
+  scheduleItems = Array.from(rows).map(row => ({
+    time: row.querySelector(".schedule-time-input").value || "00:00",
+    text: row.querySelector(".schedule-text-input").value.trim() || "Untitled schedule"
+  }));
+
+  localStorage.setItem(STORAGE.schedule, JSON.stringify(scheduleItems));
+  renderSchedule();
+  closeModal("scheduleModal");
+  showToast("Schedule updated 📅");
+}
+
+function addScheduleItem() {
+  scheduleItems.push({ time: "12:00", text: "New schedule" });
+  renderScheduleEditor();
+}
+
+function setTimerDuration(minutes) {
+  timerDuration = Number(minutes) || 25;
+  localStorage.setItem(STORAGE.timerDuration, String(timerDuration));
+
+  if (timerInterval === null) {
+    time = timerDuration * 60;
+    updateTimer();
+    $("timerStatus").textContent = "Ready for a focus session";
+  }
 }
 
 function renderBars() {
@@ -216,7 +312,7 @@ function openModal(id) { $(id).classList.remove("hidden"); }
 function closeModal(id) { $(id).classList.add("hidden"); }
 
 function setAiMessage(message) {
-  const el = $("aiMessage");
+  const el = $("aiMessagePage");
   if (el) el.innerHTML = message;
 }
 
@@ -253,80 +349,212 @@ function analyzeTasks() {
     🎯 Suggested next focus: <b>${priority}</b><br><br>
     Keep the next session small and specific.`;
 }
-
 function smartAiReply(text) {
-  const q = normalize(text);
+  const input = normalize(text);
+  const pending = tasks.filter(task => !task.done);
+  const completed = tasks.filter(task => task.done);
   const name = localStorage.getItem(STORAGE.name) || "Naruto";
+  const focusMinutes = Math.floor(focusSeconds / 60);
 
-  if (!q) return `Tell me what you want to accomplish, ${escapeHtml(name)}. For example: <b>"I need to study DBMS for 2 hours."</b>`;
+  // Focus
+  if (/focus|what should|next|start/.test(input)) {
+    if (!pending.length) {
+      return `You're all caught up, ${escapeHtml(name)}! 🎉 Add a task and I'll help you choose what to focus on next.`;
+    }
 
-  // Detect a concrete task/request and offer to add it.
-  const studyMatch = q.match(/(?:study|learn|revise|prepare)\s+(.+?)(?:\s+for\s+(\d+)\s*(?:hour|hours|hr|hrs))?$/i);
-  if (studyMatch) {
-    const subject = studyMatch[1].trim();
-    const duration = studyMatch[2] ? `${studyMatch[2]} hour${studyMatch[2] == 1 ? "" : "s"}` : "25 minutes";
-    return `📚 <b>Study plan for ${escapeHtml(subject)}</b><br>
-      Start with ${duration} of focused study.<br>
-      1️⃣ Review the main concepts<br>
-      2️⃣ Practice examples/questions<br>
-      3️⃣ Take a 5–10 minute break<br>
-      4️⃣ Test yourself without notes<br><br>
-      💡 You can add <b>${escapeHtml("Study " + subject)}</b> as a task using the button below.`;
+    return `
+      <b>🎯 Focus on this next:</b><br><br>
+      <b>${escapeHtml(pending[0].text)}</b><br><br>
+      Start a 25-minute focus session and work only on this task.
+    `;
   }
 
-  if (q.includes("focus") || q.includes("what should") || q.includes("next")) {
-    const pending = tasks.filter(t => !t.done);
-    if (!pending.length) return "🎯 Your task list is clear. Add your most important goal and I’ll help you break it into steps.";
-    return `🎯 <b>Focus on this:</b><br>${escapeHtml(pending[0].text)}<br><br>
-      Give it one 25-minute distraction-free session.`;
+  // Motivation
+  if (/motivat|lazy|tired|give up|can't|cant|demotiv/.test(input)) {
+    return `
+      You've already started, ${escapeHtml(name)}. 💪<br><br>
+      Don't try to finish everything at once.
+      Pick one small task, focus for 25 minutes,
+      and build momentum from there. 🔥
+    `;
   }
 
-  if (q.includes("motivat") || q.includes("lazy") || q.includes("tired")) {
-    return "🔥 You don't need to finish everything right now. Just win the next 25 minutes. Start with one small task and build momentum.";
+  // Day Plan
+  if (/plan|schedule|day|today/.test(input)) {
+    if (!pending.length) {
+      return `
+        Your task list is empty. 📝<br><br>
+        Add 2–3 important tasks and your day plan can start from there.
+      `;
+    }
+
+    const top = pending.slice(0, 4);
+
+    const lines = top.map((task, i) =>
+      `<b>${i + 1}.</b> ${escapeHtml(task.text)} — ${
+        i === 0 ? "Start now 🎯" : "After the previous task"
+      }`
+    ).join("<br>");
+
+    return `
+      <b>📅 Today's plan</b><br><br>
+      ${lines}<br><br>
+      Use one 25-minute focus session per important task
+      and take short breaks between sessions.
+    `;
   }
 
-  if (q.includes("plan") || q.includes("schedule") || q.includes("today")) {
-    return makePlan();
+  // Task Analysis
+  if (/analy|task|workload|pending|completed|progress/.test(input)) {
+    const priority = pending.length
+      ? escapeHtml(pending[0].text)
+      : "your next project milestone";
+
+    return `
+      <b>📊 Your productivity</b><br><br>
+      ✅ Completed: ${completed.length}<br>
+      ⏳ Pending: ${pending.length}<br>
+      ⏱️ Focus time: ${focusMinutes} minutes<br>
+      🎯 Daily goal: ${goal} tasks<br><br>
+      <b>Suggested next focus:</b> ${priority}
+    `;
   }
 
-  if (q.includes("task") || q.includes("workload") || q.includes("todo")) {
-    return analyzeTasks();
+  // Greeting
+  if (/hello|hi|hey|namaste/.test(input)) {
+    return `
+      Hey ${escapeHtml(name)}! 👋
+      I'm NEXUS, your productivity assistant.<br><br>
+      Ask me what to focus on, ask for a day plan,
+      or ask me to analyze your tasks. 🚀
+    `;
   }
 
-  if (q.includes("dbms") || q.includes("java") || q.includes("javascript") ||
-      q.includes("python") || q.includes("exam") || q.includes("study")) {
-    return `📚 <b>Study mode activated.</b><br>
-      Break the topic into: <b>Concept → Example → Practice → Quick revision</b>.<br>
-      Then start a 25-minute focus session. 🎯`;
+  // Study Help
+  if (/study|dbms|java|python|dsa|exam|college|bca|web technolog/.test(input)) {
+    return `
+      📚 <b>Study mode activated!</b><br><br>
+      Break your study goal into a small task,
+      start a 25-minute focus session,
+      and avoid switching topics until the session ends. 🎯<br><br>
+      <b>Your current pending tasks:</b> ${pending.length}
+    `;
   }
 
-  return `🤖 I understand the goal, but I’m currently running in <b>Smart AI mode</b> without a cloud AI model.<br><br>
-    Try asking about your <b>tasks, focus, study plan, motivation, or today's schedule</b>.`;
+  // Default
+  return `
+    <b>🤖 NEXUS suggestion</b><br><br>
+    I can help you with your productivity using
+    your current dashboard data.<br><br>
+
+    Try asking:<br>
+    • “What should I focus on?”<br>
+    • “Plan my day”<br>
+    • “Motivate me”<br>
+    • “Analyze my tasks”
+  `;
 }
 
-function aiReply(type) {
-  const replies = {
-    focus: smartAiReply("what should I focus on next?"),
-    motivate: smartAiReply("motivate me"),
-    plan: smartAiReply("plan my day"),
-    tasks: analyzeTasks()
+
+async function aiReply(type) {
+  const prompts = {
+    focus: "What should I focus on next?",
+    motivate: "Motivate me",
+    plan: "Plan my day",
+    tasks: "Analyze my tasks"
   };
-  setAiMessage(replies[type] || smartAiReply(""));
+
+  const message =
+    prompts[type] || "Help me with my productivity.";
+
+  setAiMessage("🤔 Thinking...");
+
+  const reply = smartAiReply(message);
+
+  setAiMessage(reply);
+}
+
+
+async function askAi() {
+  const input = $("aiInputPage");
+
+  if (!input) return;
+
+  const text = input.value.trim();
+
+  if (!text) {
+    input.focus();
+    return;
+  }
+
+  setAiMessage("🤔 Thinking...");
+
+  const reply = smartAiReply(text);
+
+  setAiMessage(reply);
+
+  input.value = "";
+  input.focus();
+}
+
+async function aiReply(type) {
+    const prompts = {
+        focus: "What should I focus on next?",
+        motivate: "Motivate me",
+        plan: "Plan my day",
+        tasks: "Analyze my tasks"
+    };
+
+    const message = prompts[type] || "Help me with my productivity.";
+
+    setAiMessage("🤔 Thinking...");
+
+    const reply = await smartAiReply(message);
+
+    setAiMessage(reply);
+}
+
+
+async function askAi() {
+    const input = $("aiInputPage");
+
+    if (!input) return;
+
+    const text = input.value.trim();
+
+    if (!text) {
+        input.focus();
+        return;
+    }
+
+    setAiMessage("🤔 Thinking...");
+
+    const reply = await smartAiReply(text);
+
+    setAiMessage(reply);
+
+    input.value = "";
+    input.focus();
 }
 
 function askAi() {
-  const input = $("aiInput");
+  const input = $("aiInputPage");
+  if (!input) return;
+
   const text = input.value.trim();
   if (!text) {
     input.focus();
     return;
   }
-  setAiMessage(smartAiReply(text));
+
+  const message = $("aiMessagePage");
+  if (message) message.innerHTML = smartAiReply(text);
+
   input.value = "";
 }
 
 function addAiSuggestedTask() {
-  const msg = $("aiMessage").innerText;
+  const msg = $("aiMessagePage")?.innerText || "";
   const match = msg.match(/Study (.+?) as a task/i);
   if (match) {
     tasks.push({ text: `Study ${match[1]}`, done: false, created: Date.now() });
@@ -337,34 +565,64 @@ function addAiSuggestedTask() {
   }
 }
 
-$("aiSend").addEventListener("click", askAi);
-$("aiInput").addEventListener("keydown", e => {
-  if (e.key === "Enter") askAi();
-});
+if ($("addTaskBtn")) $("addTaskBtn").addEventListener("click", addTask);
+if ($("taskInput")) $("taskInput").addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
+if ($("startFocus")) $("startFocus").addEventListener("click", toggleTimer);
+if ($("resetFocus")) $("resetFocus").addEventListener("click", resetTimer);
 
-$("addTaskBtn").addEventListener("click", addTask);
-$("taskInput").addEventListener("keydown", e => { if (e.key === "Enter") addTask(); });
-$("startFocus").addEventListener("click", toggleTimer);
-$("resetFocus").addEventListener("click", resetTimer);
+if ($("timerDuration")) {
+  $("timerDuration").value = String(timerDuration);
+  $("timerDuration").addEventListener("change", e => setTimerDuration(e.target.value));
+}
 
-$("themeBtn").addEventListener("click", () => {
+if ($("scheduleBtn")) $("scheduleBtn").addEventListener("click", openScheduleEditor);
+if ($("addScheduleItem")) $("addScheduleItem").addEventListener("click", addScheduleItem);
+if ($("saveSchedule")) $("saveSchedule").addEventListener("click", saveScheduleChanges);
+
+if ($("themeBtn")) $("themeBtn").addEventListener("click", () => {
   const next = document.body.classList.contains("light") ? "dark" : "light";
   applyTheme(next);
   showToast(next === "light" ? "Light mode enabled ☀️" : "Dark mode enabled 🌙");
 });
 
-$("notificationBtn").addEventListener("click", () => openModal("notificationModal"));
-$("profileBtn").addEventListener("click", () => {
+if ($("notificationBtn")) $("notificationBtn").addEventListener("click", () => openModal("notificationModal"));
+if ($("profileBtn")) $("profileBtn").addEventListener("click", () => {
   $("nameInput").value = localStorage.getItem(STORAGE.name) || "Naruto";
   openModal("profileModal");
 });
 
-$("saveProfile").addEventListener("click", () => {
+if ($("saveProfile")) $("saveProfile").addEventListener("click", () => {
   const name = $("nameInput").value.trim() || "Naruto";
   localStorage.setItem(STORAGE.name, name);
   updateDate();
+  updateProfileAvatar();
   closeModal("profileModal");
   showToast("Profile updated 👤");
+});
+
+if ($("profileImageInput")) $("profileImageInput").addEventListener("change", event => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    showToast("Please choose an image file");
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    localStorage.setItem(STORAGE.profileImage, reader.result);
+    updateProfileAvatar();
+    showToast("Profile picture updated 🖼️");
+  };
+  reader.readAsDataURL(file);
+});
+
+if ($("removeProfileImage")) $("removeProfileImage").addEventListener("click", () => {
+  localStorage.removeItem(STORAGE.profileImage);
+  $("profileImageInput").value = "";
+  updateProfileAvatar();
+  showToast("Profile picture removed");
 });
 
 document.querySelectorAll("[data-close]").forEach(btn => {
@@ -379,12 +637,12 @@ document.querySelectorAll("[data-ai]").forEach(btn => {
 });
 
 $("notes").value = localStorage.getItem(STORAGE.notes) || "";
-$("notes").addEventListener("input", () => {
+if ($("notes")) $("notes").addEventListener("input", () => {
   localStorage.setItem(STORAGE.notes, $("notes").value);
   $("noteSaved").textContent = "Saved";
 });
 
-$("newQuote").addEventListener("click", () => {
+if ($("newQuote")) $("newQuote").addEventListener("click", () => {
   const current = $("quote").textContent.replace(/[“”]/g,"");
   let next = current;
   while (next === current) next = quotes[Math.floor(Math.random() * quotes.length)];
@@ -393,7 +651,7 @@ $("newQuote").addEventListener("click", () => {
 
 $("goalSelect").value = String(goal);
 $("goalText").textContent = goal;
-$("goalSelect").addEventListener("change", () => {
+if ($("goalSelect")) $("goalSelect").addEventListener("change", () => {
   goal = Number($("goalSelect").value);
   localStorage.setItem(STORAGE.goal, String(goal));
   $("goalText").textContent = goal;
@@ -403,6 +661,8 @@ $("goalSelect").addEventListener("change", () => {
 updateStreak();
 applyTheme(localStorage.getItem(STORAGE.theme) || "dark");
 updateDate();
+updateProfileAvatar();
+renderSchedule();
 updateTimer();
 renderTasks();
 updateStats();
@@ -431,4 +691,144 @@ setInterval(updateGreeting, 60000);
 
 
 // Add a small action when the assistant produces a concrete study suggestion.
-$("aiMessage").addEventListener("dblclick", addAiSuggestedTask);
+if ($("aiMessagePage")) $("aiMessagePage").addEventListener("dblclick", addAiSuggestedTask);
+
+/* =========================================================
+   NEXUS APP NAVIGATION / MULTI-SECTION UI
+========================================================= */
+
+function openPage(page) {
+  document.querySelectorAll(".page-section").forEach((section) => {
+    section.classList.toggle("active", section.dataset.page === page);
+  });
+
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.page === page);
+  });
+
+  if (page === "tasks") syncTaskPage();
+  if (page === "schedule") syncSchedulePage();
+  if (page === "stats") syncStatsPage();
+  if (page === "settings") syncSettingsPage();
+  if (page === "focus") syncDurationButtons();
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+document.querySelectorAll(".nav-item[data-page], [data-nav]").forEach((button) => {
+  button.addEventListener("click", () => {
+    const page = button.dataset.page || button.dataset.nav;
+    if (page) openPage(page);
+  });
+});
+
+function syncTaskPage() {
+  const list = $("taskListPage");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  tasks.forEach((task, index) => {
+    const li = document.createElement("li");
+    li.className = `task-item ${task.done ? "done" : ""}`;
+    li.innerHTML = `
+      <input class="task-check" type="checkbox" ${task.done ? "checked" : ""}>
+      <label>${escapeHtml(task.text)}</label>
+      <button class="delete-btn" title="Delete task">×</button>
+    `;
+
+    li.querySelector(".task-check").addEventListener("change", () => {
+      tasks[index].done = !tasks[index].done;
+      saveTasks();
+      renderTasks();
+      syncTaskPage();
+      updateStats();
+    });
+
+    li.querySelector(".delete-btn").addEventListener("click", () => {
+      tasks.splice(index, 1);
+      saveTasks();
+      renderTasks();
+      syncTaskPage();
+      updateStats();
+      showToast("Task deleted");
+    });
+
+    list.appendChild(li);
+  });
+
+  const empty = $("taskEmptyPage");
+  if (empty) empty.style.display = tasks.length ? "none" : "block";
+  document.querySelectorAll("#taskCount").forEach((el) => {
+    el.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
+  });
+}
+
+const taskPageInput = $("taskInputPage");
+const taskPageButton = $("addTaskPage");
+
+function addTaskFromPage() {
+  if (!taskPageInput) return;
+  const text = taskPageInput.value.trim();
+  if (!text) return;
+  tasks.push({ text, done: false, created: Date.now() });
+  taskPageInput.value = "";
+  saveTasks(); renderTasks(); syncTaskPage(); updateStats();
+  showToast("Task added 🚀");
+}
+if (taskPageButton) taskPageButton.addEventListener("click", addTaskFromPage);
+if (taskPageInput) taskPageInput.addEventListener("keydown", (e) => { if (e.key === "Enter") addTaskFromPage(); });
+
+function syncSchedulePage() {
+  const pageList = $("scheduleListPage");
+  if (!pageList) return;
+  pageList.innerHTML = scheduleItems.length ? scheduleItems.map((item) => `
+    <div class="schedule-item"><span class="time">${escapeHtml(item.time)}</span><span>${escapeHtml(item.text)}</span></div>`).join("") : `<div class="schedule-empty">No schedule added yet.</div>`;
+}
+
+function syncStatsPage() {
+  if ($("completedStats")) $("completedStats").textContent = tasks.filter(t => t.done).length;
+  if ($("focusStats")) $("focusStats").textContent = `${Math.floor(focusSeconds / 60)}m`;
+  if ($("streakStats")) $("streakStats").textContent = streak;
+  if ($("goalTextStats")) $("goalTextStats").textContent = goal;
+  renderBars();
+}
+
+function syncSettingsPage() {
+  const name = localStorage.getItem(STORAGE.name) || "Naruto";
+  if ($("settingsName")) $("settingsName").textContent = name;
+  const source = localStorage.getItem(STORAGE.profileImage);
+  const avatar = $("settingsAvatar");
+  if (avatar) {
+    if (source) { avatar.innerHTML = `<img src="${source}" alt="Profile picture">`; avatar.classList.add("has-image"); }
+    else { avatar.textContent = name.charAt(0).toUpperCase(); avatar.classList.remove("has-image"); }
+  }
+}
+
+function syncDurationButtons() {
+  document.querySelectorAll("[data-duration]").forEach((button) => button.classList.toggle("selected", Number(button.dataset.duration) === timerDuration));
+}
+document.querySelectorAll("[data-duration]").forEach((button) => {
+  button.addEventListener("click", () => { setTimerDuration(Number(button.dataset.duration)); if ($("timerDuration")) $("timerDuration").value = String(timerDuration); syncDurationButtons(); });
+});
+
+if ($("aiSendPage")) $("aiSendPage").addEventListener("click", () => {
+  const input = $("aiInputPage"); if (!input || !input.value.trim()) return;
+  if ($("aiMessagePage")) $("aiMessagePage").innerHTML = smartAiReply(input.value.trim());
+  input.value = "";
+});
+if ($("aiInputPage")) $("aiInputPage").addEventListener("keydown", (e) => { if (e.key === "Enter") $("aiSendPage")?.click(); });
+document.querySelectorAll('.ai-page-card [data-ai]').forEach((button) => button.addEventListener("click", () => { if ($("aiMessagePage")) $("aiMessagePage").innerHTML = smartAiReply(button.dataset.ai); }));
+
+if ($("settingsProfileBtn")) $("settingsProfileBtn").addEventListener("click", () => { if ($("nameInput")) $("nameInput").value = localStorage.getItem(STORAGE.name) || "Naruto"; openModal("profileModal"); });
+if ($("settingsThemeBtn")) $("settingsThemeBtn").addEventListener("click", () => { const next = document.body.classList.contains("light") ? "dark" : "light"; applyTheme(next); syncSettingsPage(); });
+if ($("settingsNotificationBtn")) $("settingsNotificationBtn").addEventListener("click", () => openModal("notificationModal"));
+
+const originalUpdateProfileAvatar = updateProfileAvatar;
+updateProfileAvatar = function() { originalUpdateProfileAvatar(); syncSettingsPage(); };
+
+syncTaskPage();
+syncSchedulePage();
+syncStatsPage();
+syncSettingsPage();
+syncDurationButtons();

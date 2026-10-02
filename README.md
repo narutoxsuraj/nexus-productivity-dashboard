@@ -13,7 +13,7 @@
 7. Start:
    npm start
 8. Open:
-   http://127.0.0.1:3000
+   https://narutoxsuraj.github.io/nexus-productivity-dashboard/
 
 The API key stays on the server and is not placed in browser JavaScript.
 
