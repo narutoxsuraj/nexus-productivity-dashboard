@@ -1,24 +1,51 @@
-# NEXUS Productivity Dashboard + AI
+# 🚀 NEXUS Productivity Dashboard
 
-## Run locally
+AI-powered productivity dashboard for managing
+tasks, focus sessions, schedules and productivity.
 
-1. Install Node.js (LTS).
-2. Open this folder in VS Code terminal.
-3. Run:
-   npm install
-4. Create a file named `.env`.
-5. Copy `.env.example` into `.env`.
-6. Put your OpenAI API key in `.env`:
-   OPENAI_API_KEY=your_key_here
-7. Start:
-   npm start
-8. Open:
-   https://narutoxsuraj.github.io/nexus-productivity-dashboard/
+## ✨ Features
+- 🤖 AI Assistant
+- ✅ Task Management
+- ⏱️ Focus Timer
+- 📅 Today's Schedule
+- 📝 Quick Notes
+- 📊 Productivity Analytics
+- 🔥 Daily Streak
+- 🌙 Dark / Light Mode
+- 👤 Custom Profile Picture
+- 📱 Responsive Design
+- 💾 LocalStorage
 
-The API key stays on the server and is not placed in browser JavaScript.
+## 🛠️ Tech Stack
+HTML
+CSS
+JavaScript
+Chart.js
+LocalStorage
+Node.js / Express
+OpenAI API
 
-## Important
+## 📸 Screenshots
 
-Do not commit `.env` to GitHub. `.gitignore` already excludes it.
+## 🚀 Getting Started
 
-GitHub Pages can host the frontend, but it cannot run this Node/Express backend. For a public AI version, deploy the backend to a server platform and point the frontend API URL to that backend.
+## 📁 Project Structure
+
+## 🌐 Live Demo
+
+## 🔮 Future Improvements
+
+## 👨‍💻 Author
+Suraj Kumar
+
+
+## 🌐 Live Demo
+
+🚀 **Try NEXUS here:**
+
+👉 [Open NEXUS Productivity Dashboard](https://narutoxsuraj.github.io/nexus-productivity-dashboard/)
+
+## 🔗 Project Links
+
+- 🌐 **Live Demo:** https://narutoxsuraj.github.io/nexus-productivity-dashboard/
+- 💻 **GitHub Repository:** https://github.com/narutoxsuraj/nexus-productivity-dashboard
