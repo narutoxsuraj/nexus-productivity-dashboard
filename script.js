@@ -811,6 +811,92 @@ function syncTaskPage() {
   });
 }
 
+
+/* ===== TASK FILTERS ===== */
+let activeTaskFilter = "all";
+
+function syncTaskFilterButtons() {
+  document.querySelectorAll(".task-filters .filter").forEach((button) => {
+    const label = button.textContent.trim().toLowerCase();
+    const filter = label === "pending" ? "pending" : label === "completed" ? "completed" : "all";
+    button.classList.toggle("active", filter === activeTaskFilter);
+  });
+}
+
+function syncTaskPageFiltered() {
+  const list = $("taskListPage");
+  if (!list) return;
+
+  const filtered = tasks.filter((task) => {
+    if (activeTaskFilter === "pending") return !task.done;
+    if (activeTaskFilter === "completed") return task.done;
+    return true;
+  });
+
+  list.innerHTML = "";
+
+  filtered.forEach((task) => {
+    const originalIndex = tasks.indexOf(task);
+    const li = document.createElement("li");
+    li.className = `task-item ${task.done ? "done" : ""}`;
+    li.innerHTML = `
+      <input class="task-check" type="checkbox" ${task.done ? "checked" : ""} aria-label="Complete task">
+      <label>${escapeHtml(task.text)}</label>
+      <button class="delete-btn" title="Delete task">×</button>
+    `;
+
+    li.querySelector(".task-check").addEventListener("change", () => {
+      tasks[originalIndex].done = !tasks[originalIndex].done;
+      saveTasks();
+      renderTasks();
+      syncTaskPageFiltered();
+      updateStats();
+    });
+
+    li.querySelector(".delete-btn").addEventListener("click", () => {
+      tasks.splice(originalIndex, 1);
+      saveTasks();
+      renderTasks();
+      syncTaskPageFiltered();
+      updateStats();
+      showToast("Task deleted");
+    });
+
+    list.appendChild(li);
+  });
+
+  const empty = $("taskEmptyPage");
+  if (empty) {
+    empty.style.display = filtered.length ? "none" : "block";
+    empty.textContent =
+      activeTaskFilter === "pending" ? "No pending tasks 🎯" :
+      activeTaskFilter === "completed" ? "No completed tasks yet." :
+      "No tasks yet. Add your first task 🚀";
+  }
+
+  document.querySelectorAll("#taskCount").forEach((el) => {
+    el.textContent = `${tasks.length} task${tasks.length === 1 ? "" : "s"}`;
+  });
+
+  syncTaskFilterButtons();
+}
+
+document.querySelectorAll(".task-filters .filter").forEach((button) => {
+  button.addEventListener("click", () => {
+    const label = button.textContent.trim().toLowerCase();
+    activeTaskFilter =
+      label === "pending" ? "pending" :
+      label === "completed" ? "completed" : "all";
+    syncTaskPageFiltered();
+  });
+});
+
+const originalSyncTaskPage = syncTaskPage;
+syncTaskPage = function () {
+  originalSyncTaskPage();
+  syncTaskPageFiltered();
+};
+
 const taskPageInput = $("taskInputPage");
 const taskPageButton = $("addTaskPage");
 
